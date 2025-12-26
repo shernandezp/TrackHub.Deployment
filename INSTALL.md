@@ -274,7 +274,7 @@ See the [Database Setup](#database-setup) section for detailed database initiali
 Create and configure the `.env` file:
 
 ```bash
-cd /opt/trackhub/deployment
+cd /opt/trackhub/TrackHub.Deployment
 cp .env.example .env
 ```
 
@@ -306,9 +306,15 @@ REACT_APP_AUTHORIZATION_ENDPOINT=https://trackhub.example.com/Identity/authorize
 # ... etc
 ```
 
-### Step 6: SSL Certificates
+### Step 6: SSL and OpenIddict Certificates
 
-#### Option A: Let's Encrypt (Production)
+You need **two types of certificates**:
+1. **SSL/TLS Certificate** - For HTTPS (Nginx)
+2. **OpenIddict Certificate** - For token signing (Authority Server and all APIs)
+
+#### SSL Certificate (for HTTPS)
+
+**Option A: Let's Encrypt (Production)**
 
 ```bash
 # Install certbot
@@ -323,11 +329,37 @@ sudo cp /etc/letsencrypt/live/trackhub.example.com/privkey.pem certificates/
 sudo chown $USER:$USER certificates/*.pem
 ```
 
-#### Option B: Self-Signed (Development)
+**Option B: Self-Signed (Development)**
 
 ```bash
 ./scripts/generate-certs.sh trackhub.example.com 365 openiddict
 ```
+
+#### OpenIddict Certificate (for Token Signing)
+
+All services (Authority Server, Security, Manager, etc.) use the same OpenIddict certificate to sign and validate tokens. For Linux/Docker deployments, certificates are loaded from a `.pfx` file.
+
+```bash
+# Generate OpenIddict certificate (if not using generate-certs.sh)
+openssl req -x509 -newkey rsa:4096 \
+    -keyout key.pem -out cert.pem \
+    -days 365 -nodes \
+    -subj "/CN=trackhub.example.com"
+
+# Convert to PFX format
+openssl pkcs12 -export \
+    -out certificates/certificate.pfx \
+    -inkey key.pem -in cert.pem \
+    -password pass:your-secure-password
+
+# Clean up
+rm key.pem cert.pem
+
+# Update .env with the password
+# CERTIFICATE_PASSWORD=your-secure-password
+```
+
+**Note:** The `generate-certs.sh` script creates both SSL and OpenIddict certificates in one step.
 
 ### Step 7: Configure OAuth Clients
 
@@ -721,6 +753,8 @@ Then remove the dependency from the authority service.
 
 ### Production (Let's Encrypt)
 
+For HTTPS/TLS certificates used by Nginx:
+
 ```bash
 # Install certbot
 sudo apt install certbot
@@ -728,23 +762,81 @@ sudo apt install certbot
 # Generate certificate
 sudo certbot certonly --standalone -d your-domain.com
 
+# Copy to deployment folder
+sudo cp /etc/letsencrypt/live/your-domain.com/fullchain.pem certificates/
+sudo cp /etc/letsencrypt/live/your-domain.com/privkey.pem certificates/
+sudo chown $USER:$USER certificates/*.pem
+
 # Set up auto-renewal
 sudo crontab -e
 # Add: 0 0 1 * * certbot renew --quiet && docker restart trackhub-nginx
 ```
 
-### OpenIddict Certificate
+### OpenIddict Certificate (Token Signing)
 
-For the Authority Server, you need a certificate for token signing:
+All services (including the Authority Server) use the `LoadCertFromFile` option to load the OpenIddict certificate from a `.pfx` file. This is the recommended approach for Linux/Docker deployments.
+
+#### Option A: Generate Self-Signed Certificate (Development/Testing)
 
 ```bash
-# Generate using the script
-./scripts/generate-certs.sh your-domain.com 365 your-password
+# Using the provided script
+./scripts/generate-certs.sh your-domain.com 365 your-certificate-password
 
-# Or generate manually
-openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes
-openssl pkcs12 -export -out certificate.pfx -inkey key.pem -in cert.pem
+# Or manually with OpenSSL
+openssl req -x509 -newkey rsa:4096 \
+    -keyout key.pem -out cert.pem \
+    -days 365 -nodes \
+    -subj "/CN=your-domain.com"
+
+# Convert to PFX format
+openssl pkcs12 -export \
+    -out certificates/certificate.pfx \
+    -inkey key.pem -in cert.pem \
+    -password pass:your-certificate-password
+
+# Clean up temporary files
+rm key.pem cert.pem
 ```
+
+#### Option B: Use CA-Signed Certificate (Production)
+
+1. Obtain a certificate from a trusted Certificate Authority
+2. Convert to PFX format if needed:
+
+```bash
+# If you have separate cert and key files
+openssl pkcs12 -export \
+    -out certificates/certificate.pfx \
+    -inkey your-private-key.pem \
+    -in your-certificate.pem \
+    -certfile your-ca-bundle.pem \
+    -password pass:your-certificate-password
+```
+
+#### Certificate Configuration
+
+The Docker deployment is configured to use file-based certificate loading:
+
+| Environment Variable | Description | Example |
+|---------------------|-------------|---------|
+| `OpenIddict__LoadCertFromFile` | Enable file-based loading | `true` |
+| `OpenIddict__Path` | Path to certificate file | `/app/certificates/certificate.pfx` |
+| `OpenIddict__Password` | Certificate password | Set in `.env` as `CERTIFICATE_PASSWORD` |
+
+**Important Notes:**
+- All services use the same certificate for token validation
+- The certificate is mounted as a read-only volume at `/app/certificates/`
+- Set `CERTIFICATE_PASSWORD` in your `.env` file
+- For production, use a CA-signed certificate with a strong password
+
+#### Windows vs Linux Certificate Loading
+
+| Platform | Method | Configuration |
+|----------|--------|---------------|
+| **Linux/Docker** | File-based (PFX) | `LoadCertFromFile=true`, `Path=/app/certificates/certificate.pfx` |
+| **Windows (IIS)** | Certificate Store | `LoadCertFromFile=false`, `Thumbprint=<cert-thumbprint>` |
+
+The services support both methods. For Docker deployments, file-based loading is used automatically.
 
 ---
 
@@ -769,7 +861,7 @@ cd /opt/trackhub/TrackHub.Manager && git pull
 # ... repeat for all repos
 
 # Rebuild and deploy
-cd /opt/trackhub/deployment
+cd /opt/trackhub/TrackHub.Deployment
 ./scripts/deploy.sh full --build
 ```
 

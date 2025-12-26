@@ -11,7 +11,7 @@ Docker-based deployment solution for TrackHub application stack.
 ## Project Structure
 
 ```
-deployment/
+TrackHub.Deployment/
 ├── docker-compose.yml           # Full stack deployment
 ├── docker-compose.frontend.yml  # Frontend-only deployment
 ├── docker-compose.backend.yml   # Backend-only deployment

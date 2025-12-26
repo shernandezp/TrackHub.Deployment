@@ -34,7 +34,7 @@ services:
   authority:
     build:
       context: ../TrackHub.AuthorityServer
-      dockerfile: ../deployment/docker/Dockerfile.authority
+      dockerfile: ../TrackHub.Deployment/docker/Dockerfile.authority
     container_name: trackhub-authority
     restart: unless-stopped
     environment:
@@ -65,7 +65,7 @@ services:
   security:
     build:
       context: ../TrackHubSecurity
-      dockerfile: ../deployment/docker/Dockerfile.security
+      dockerfile: ../TrackHub.Deployment/docker/Dockerfile.security
     container_name: trackhub-security
     restart: unless-stopped
     environment:
@@ -101,7 +101,7 @@ services:
   manager:
     build:
       context: ../TrackHub.Manager
-      dockerfile: ../deployment/docker/Dockerfile.manager
+      dockerfile: ../TrackHub.Deployment/docker/Dockerfile.manager
     container_name: trackhub-manager
     restart: unless-stopped
     environment:
@@ -138,7 +138,7 @@ services:
   router:
     build:
       context: ../TrackHubRouter
-      dockerfile: ../deployment/docker/Dockerfile.router
+      dockerfile: ../TrackHub.Deployment/docker/Dockerfile.router
     container_name: trackhub-router
     restart: unless-stopped
     environment:
@@ -178,7 +178,7 @@ services:
   geofencing:
     build:
       context: ../TrackHub.Geofencing
-      dockerfile: ../deployment/docker/Dockerfile.geofencing
+      dockerfile: ../TrackHub.Deployment/docker/Dockerfile.geofencing
     container_name: trackhub-geofencing
     restart: unless-stopped
     environment:
@@ -213,7 +213,7 @@ services:
   reporting:
     build:
       context: ../TrackHub.Reporting
-      dockerfile: ../deployment/docker/Dockerfile.reporting
+      dockerfile: ../TrackHub.Deployment/docker/Dockerfile.reporting
     container_name: trackhub-reporting
     restart: unless-stopped
     environment:

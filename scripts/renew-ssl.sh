@@ -4,7 +4,7 @@
 # =============================================================================
 # Automatically renews Let's Encrypt certificates and reloads nginx
 # Add to crontab for automatic renewal:
-#   0 0 1 * * /opt/trackhub/deployment/scripts/renew-ssl.sh >> /var/log/trackhub-ssl-renewal.log 2>&1
+#   0 0 1 * * /opt/trackhub/TrackHub.Deployment/scripts/renew-ssl.sh >> /var/log/trackhub-ssl-renewal.log 2>&1
 # =============================================================================
 
 set -e

@@ -27,7 +27,7 @@ services:
   frontend:
     build:
       context: ../TrackHub
-      dockerfile: ../deployment/docker/Dockerfile.frontend
+      dockerfile: ../TrackHub.Deployment/docker/Dockerfile.frontend
       args:
         - REACT_APP_DEFAULT_LAT=${REACT_APP_DEFAULT_LAT:-4.624335}
         - REACT_APP_DEFAULT_LNG=${REACT_APP_DEFAULT_LNG:--74.063644}
