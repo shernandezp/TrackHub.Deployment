@@ -1,0 +1,270 @@
+# TrackHub Backend-Only Deployment
+# Use this for split deployment where backend runs on a separate server
+# Frontend server should point API endpoints to this server's URL
+
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: trackhub-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.backend.conf:/etc/nginx/nginx.conf:ro
+      - ./certificates:/etc/nginx/ssl:ro
+    depends_on:
+      - authority
+      - security
+      - manager
+      - router
+      - geofencing
+      - reporting
+    networks:
+      - trackhub-network
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # =============================================================================
+  # AUTHORITY SERVER (OpenIddict Identity Server)
+  # =============================================================================
+  authority:
+    build:
+      context: ../TrackHub.AuthorityServer
+      dockerfile: ../deployment/docker/Dockerfile.authority
+    container_name: trackhub-authority
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__Security=${DB_CONNECTION_SECURITY}
+      - AllowedCorsOrigins=${ALLOWED_CORS_ORIGINS}
+      - OpenIddict__LoadCertFromFile=true
+      - OpenIddict__Path=/app/certificates/certificate.pfx
+      - OpenIddict__Password=${CERTIFICATE_PASSWORD}
+      - OpenIddict__Scopes=${OPENIDDICT_SCOPES:-mobile_scope,web_scope,sec_scope}
+    volumes:
+      - ./certificates:/app/certificates:ro
+    networks:
+      - trackhub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      - db-init
+
+  # =============================================================================
+  # SECURITY API (GraphQL)
+  # =============================================================================
+  security:
+    build:
+      context: ../TrackHubSecurity
+      dockerfile: ../deployment/docker/Dockerfile.security
+    container_name: trackhub-security
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__Security=${DB_CONNECTION_SECURITY}
+      - AllowedCorsOrigins=${ALLOWED_CORS_ORIGINS}
+      - AuthorityServer__Authority=${AUTHORITY_URL}
+      - AuthorityServer__ValidateAudience=false
+      - AuthorityServer__ValidateIssuer=true
+      - AuthorityServer__ValidateIssuerSigningKey=true
+      - AppSettings__GraphQLManagerService=${GRAPHQL_MANAGER_SERVICE}
+      - AppSettings__EncryptionKey=${ENCRYPTION_KEY}
+      - OpenIddict__LoadCertFromFile=true
+      - OpenIddict__Path=/app/certificates/certificate.pfx
+      - OpenIddict__Password=${CERTIFICATE_PASSWORD}
+    volumes:
+      - ./certificates:/app/certificates:ro
+    networks:
+      - trackhub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      - authority
+
+  # =============================================================================
+  # MANAGER API (GraphQL)
+  # =============================================================================
+  manager:
+    build:
+      context: ../TrackHub.Manager
+      dockerfile: ../deployment/docker/Dockerfile.manager
+    container_name: trackhub-manager
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=${DB_CONNECTION_MANAGER}
+      - AllowedCorsOrigins=${ALLOWED_CORS_ORIGINS}
+      - AuthorityServer__Authority=${AUTHORITY_URL}
+      - AuthorityServer__ValidateAudience=false
+      - AuthorityServer__ValidateIssuer=true
+      - AuthorityServer__ValidateIssuerSigningKey=true
+      - AppSettings__GraphQLIdentityService=${GRAPHQL_IDENTITY_SERVICE}
+      - AppSettings__GraphQLSecurityService=${GRAPHQL_SECURITY_SERVICE}
+      - AppSettings__EncryptionKey=${ENCRYPTION_KEY}
+      - OpenIddict__LoadCertFromFile=true
+      - OpenIddict__Path=/app/certificates/certificate.pfx
+      - OpenIddict__Password=${CERTIFICATE_PASSWORD}
+    volumes:
+      - ./certificates:/app/certificates:ro
+    networks:
+      - trackhub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      - security
+
+  # =============================================================================
+  # ROUTER API (GraphQL)
+  # =============================================================================
+  router:
+    build:
+      context: ../TrackHubRouter
+      dockerfile: ../deployment/docker/Dockerfile.router
+    container_name: trackhub-router
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - AllowedCorsOrigins=${ALLOWED_CORS_ORIGINS}
+      - AuthorityServer__Authority=${AUTHORITY_URL}
+      - AuthorityServer__ValidateAudience=false
+      - AuthorityServer__ValidateIssuer=true
+      - AuthorityServer__ValidateIssuerSigningKey=true
+      - AppSettings__GraphQLIdentityService=${GRAPHQL_IDENTITY_SERVICE}
+      - AppSettings__GraphQLManagerService=${GRAPHQL_MANAGER_SERVICE}
+      - AppSettings__EncryptionKey=${ENCRYPTION_KEY}
+      - AppSettings__Protocols__0=CommandTrack
+      - AppSettings__Protocols__1=GeoTab
+      - AppSettings__Protocols__2=GpsGate
+      - AppSettings__Protocols__3=Traccar
+      - OpenIddict__LoadCertFromFile=true
+      - OpenIddict__Path=/app/certificates/certificate.pfx
+      - OpenIddict__Password=${CERTIFICATE_PASSWORD}
+    volumes:
+      - ./certificates:/app/certificates:ro
+    networks:
+      - trackhub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      - manager
+
+  # =============================================================================
+  # GEOFENCING API (GraphQL)
+  # =============================================================================
+  geofencing:
+    build:
+      context: ../TrackHub.Geofencing
+      dockerfile: ../deployment/docker/Dockerfile.geofencing
+    container_name: trackhub-geofencing
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=${DB_CONNECTION_MANAGER}
+      - AllowedCorsOrigins=${ALLOWED_CORS_ORIGINS}
+      - AuthorityServer__Authority=${AUTHORITY_URL}
+      - AuthorityServer__ValidateAudience=false
+      - AuthorityServer__ValidateIssuer=true
+      - AuthorityServer__ValidateIssuerSigningKey=true
+      - AppSettings__GraphQLIdentityService=${GRAPHQL_IDENTITY_SERVICE}
+      - OpenIddict__LoadCertFromFile=true
+      - OpenIddict__Path=/app/certificates/certificate.pfx
+      - OpenIddict__Password=${CERTIFICATE_PASSWORD}
+    volumes:
+      - ./certificates:/app/certificates:ro
+    networks:
+      - trackhub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      - manager
+
+  # =============================================================================
+  # REPORTING API (REST)
+  # =============================================================================
+  reporting:
+    build:
+      context: ../TrackHub.Reporting
+      dockerfile: ../deployment/docker/Dockerfile.reporting
+    container_name: trackhub-reporting
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - AllowedCorsOrigins=${ALLOWED_CORS_ORIGINS}
+      - AuthorityServer__Authority=${AUTHORITY_URL}
+      - AuthorityServer__ValidateAudience=false
+      - AuthorityServer__ValidateIssuer=true
+      - AuthorityServer__ValidateIssuerSigningKey=true
+      - AppSettings__GraphQLIdentityService=${GRAPHQL_IDENTITY_SERVICE}
+      - AppSettings__GraphQLRouterService=${GRAPHQL_ROUTER_SERVICE}
+      - AppSettings__GraphQLGeofenceService=${GRAPHQL_GEOFENCE_SERVICE}
+      - OpenIddict__LoadCertFromFile=true
+      - OpenIddict__Path=/app/certificates/certificate.pfx
+      - OpenIddict__Password=${CERTIFICATE_PASSWORD}
+    volumes:
+      - ./certificates:/app/certificates:ro
+    networks:
+      - trackhub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      - router
+      - geofencing
+
+  # =============================================================================
+  # DATABASE INITIALIZATION (runs once)
+  # =============================================================================
+  db-init:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.db-init
+    container_name: trackhub-db-init
+    environment:
+      - DB_CONNECTION_SECURITY=${DB_CONNECTION_SECURITY}
+      - DB_CONNECTION_MANAGER=${DB_CONNECTION_MANAGER}
+    volumes:
+      - ./config/clients.json:/app/clients.json:ro
+      - db-init-flag:/app/flags
+    networks:
+      - trackhub-network
+
+networks:
+  trackhub-network:
+    driver: bridge
+
+volumes:
+  db-init-flag:
+    driver: local

@@ -1,0 +1,14 @@
+# Placeholder for certificates
+# Place the following files in this directory:
+#
+# SSL Certificates (for Nginx):
+#   - fullchain.pem  : SSL certificate chain
+#   - privkey.pem    : SSL private key
+#
+# OpenIddict Certificate (for Authority Server):
+#   - certificate.pfx : PKCS12 certificate for token signing
+#
+# For development, you can generate self-signed certificates:
+#   ./scripts/generate-certs.sh your-domain.com
+#
+# For production, use Let's Encrypt or a trusted CA.

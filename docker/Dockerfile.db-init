@@ -1,0 +1,52 @@
+# Database Initialization Container
+# Runs ClientSeeder and DBInitializers once during initial deployment
+
+FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
+WORKDIR /src
+
+# Copy AuthorityServer ClientSeeder
+COPY ../TrackHub.AuthorityServer/AuthorityServer.sln ./authority/
+COPY ../TrackHub.AuthorityServer/Directory.Build.props ./authority/
+COPY ../TrackHub.AuthorityServer/Directory.Packages.props ./authority/
+COPY ../TrackHub.AuthorityServer/global.json ./authority/
+COPY ../TrackHub.AuthorityServer/src/ ./authority/src/
+
+# Copy TrackHubSecurity DBInitializer
+COPY ../TrackHubSecurity/TrackHub.Security.sln ./security/
+COPY ../TrackHubSecurity/Directory.Build.props ./security/
+COPY ../TrackHubSecurity/Directory.Packages.props ./security/
+COPY ../TrackHubSecurity/global.json ./security/
+COPY ../TrackHubSecurity/src/ ./security/src/
+
+# Copy TrackHub.Manager DBInitializer
+COPY ../TrackHub.Manager/TrackHub.Manager.sln ./manager/
+COPY ../TrackHub.Manager/Directory.Build.props ./manager/
+COPY ../TrackHub.Manager/Directory.Packages.props ./manager/
+COPY ../TrackHub.Manager/global.json ./manager/
+COPY ../TrackHub.Manager/src/ ./manager/src/
+
+# Build all initializers
+RUN dotnet publish ./authority/src/ClientSeeder/ClientSeeder.csproj -c Release -o /app/client-seeder
+RUN dotnet publish ./security/src/DBInitializer/DBInitializer.csproj -c Release -o /app/security-init
+RUN dotnet publish ./manager/src/DBInitializer/DBInitializer.csproj -c Release -o /app/manager-init
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS runtime
+WORKDIR /app
+
+# Install PostgreSQL client for connectivity checks
+RUN apt-get update && apt-get install -y postgresql-client && rm -rf /var/lib/apt/lists/*
+
+# Copy published applications
+COPY --from=build /app/client-seeder ./client-seeder/
+COPY --from=build /app/security-init ./security-init/
+COPY --from=build /app/manager-init ./manager-init/
+
+# Copy initialization scripts
+COPY scripts/init-databases.sh ./init-databases.sh
+COPY scripts/sync-user-account-ids.sh ./sync-user-account-ids.sh
+RUN chmod +x ./init-databases.sh ./sync-user-account-ids.sh
+
+# Create flags directory for tracking initialization state
+RUN mkdir -p /app/flags
+
+ENTRYPOINT ["./init-databases.sh"]

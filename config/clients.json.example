@@ -1,0 +1,29 @@
+{
+  "scopes": [
+    {
+      "name": "web_scope",
+      "resource": "web_resource"
+    },
+    {
+      "name": "mobile_scope",
+      "resource": "mobile_resource"
+    },
+    {
+      "name": "sec_scope",
+      "resource": "sec_resource"
+    }
+  ],
+  "PKCEClients": [
+    {
+      "clientId": "web_client",
+      "uri": "https://<<YOUR_DOMAIN>>/authentication/callback",
+      "scope": "web_scope"
+    }
+  ],
+  "serviceClients": [
+    {
+      "clientId": "syncworker_client",
+      "clientSecret": "<<GENERATE_A_SECURE_SECRET>>"
+    }
+  ]
+}

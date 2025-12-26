@@ -1,0 +1,33 @@
+# TrackHub Deployment Files
+# Ignore sensitive configuration
+
+# Environment files with secrets
+.env
+!.env.example
+!.env.frontend.example
+!.env.backend.example
+
+# Certificates
+certificates/*.pem
+certificates/*.pfx
+certificates/*.key
+certificates/*.crt
+certificates/*.csr
+!certificates/.gitkeep
+
+# OAuth clients configuration with secrets
+config/clients.json
+!config/clients.json.example
+
+# Backups
+backups/
+
+# Docker volumes
+volumes/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
