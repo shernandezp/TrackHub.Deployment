@@ -1,7 +1,7 @@
 # Database Initialization Container
 # Runs ClientSeeder and DBInitializers once during initial deployment
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Copy AuthorityServer ClientSeeder
@@ -30,7 +30,7 @@ RUN dotnet publish ./authority/src/ClientSeeder/ClientSeeder.csproj -c Release -
 RUN dotnet publish ./security/src/DBInitializer/DBInitializer.csproj -c Release -o /app/security-init
 RUN dotnet publish ./manager/src/DBInitializer/DBInitializer.csproj -c Release -o /app/manager-init
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
 # Install PostgreSQL client for connectivity checks

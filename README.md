@@ -2,6 +2,19 @@
 
 Docker-based deployment solution for TrackHub application stack.
 
+## Key Features
+
+- **Complete Stack Orchestration**: Deploy frontend, backend, and all microservices with a single command
+- **Flexible Deployment Options**: Full stack, frontend-only, or backend-only configurations
+- **Automated SSL Management**: Certificate generation and Let's Encrypt auto-renewal support
+- **Centralized Configuration**: Template-based configuration management for all services
+- **Database Backup & Restore**: Automated backup scripts with versioned restore capabilities
+- **Health Monitoring**: Built-in health checks for all services
+- **Version Management**: Tag, list, and rollback deployments with ease
+- **Nginx Reverse Proxy**: Pre-configured routing for all microservices
+
+---
+
 ## Quick Links
 
 - [Full Installation Guide](INSTALL.md) - Comprehensive step-by-step instructions
@@ -20,6 +33,7 @@ TrackHub.Deployment/
 ├── .env.backend.example         # Environment template (backend)
 ├── INSTALL.md                   # Detailed installation guide
 ├── README.md                    # This file
+├── database-structural.sql      # Structural domain migration script
 ├── certificates/                # SSL and OpenIddict certificates
 ├── config/
 │   ├── clients.json.example     # OAuth clients configuration
@@ -170,6 +184,17 @@ All services share similar `appsettings.json` configurations. Use the centralize
 - PostgreSQL 13+ (external)
 - SSL Certificate
 - Domain name
+
+## Database Migrations
+
+Before deploying updated services, run the required migration scripts against your PostgreSQL database:
+
+```bash
+# Structural domain migration (adds AccountId to transporters and devices tables)
+psql -h your-db-host -U postgres -d trackhub_manager -f database-structural.sql
+```
+
+Migration scripts are idempotent and safe to re-run. Always run migrations **before** deploying the updated application services.
 
 ## Support
 
