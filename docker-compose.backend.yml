@@ -74,7 +74,7 @@ services:
       - ConnectionStrings__Security=${DB_CONNECTION_SECURITY}
       - AllowedCorsOrigins=${ALLOWED_CORS_ORIGINS}
       - AuthorityServer__Authority=${AUTHORITY_URL}
-      - AuthorityServer__ValidateAudience=false
+      - AuthorityServer__ValidateAudience=true
       - AuthorityServer__ValidateIssuer=true
       - AuthorityServer__ValidateIssuerSigningKey=true
       - AppSettings__GraphQLManagerService=${GRAPHQL_MANAGER_SERVICE}
@@ -110,7 +110,7 @@ services:
       - ConnectionStrings__DefaultConnection=${DB_CONNECTION_MANAGER}
       - AllowedCorsOrigins=${ALLOWED_CORS_ORIGINS}
       - AuthorityServer__Authority=${AUTHORITY_URL}
-      - AuthorityServer__ValidateAudience=false
+      - AuthorityServer__ValidateAudience=true
       - AuthorityServer__ValidateIssuer=true
       - AuthorityServer__ValidateIssuerSigningKey=true
       - AppSettings__GraphQLIdentityService=${GRAPHQL_IDENTITY_SERVICE}
@@ -146,7 +146,7 @@ services:
       - ASPNETCORE_URLS=http://+:8080
       - AllowedCorsOrigins=${ALLOWED_CORS_ORIGINS}
       - AuthorityServer__Authority=${AUTHORITY_URL}
-      - AuthorityServer__ValidateAudience=false
+      - AuthorityServer__ValidateAudience=true
       - AuthorityServer__ValidateIssuer=true
       - AuthorityServer__ValidateIssuerSigningKey=true
       - AppSettings__GraphQLIdentityService=${GRAPHQL_IDENTITY_SERVICE}
@@ -187,7 +187,7 @@ services:
       - ConnectionStrings__DefaultConnection=${DB_CONNECTION_MANAGER}
       - AllowedCorsOrigins=${ALLOWED_CORS_ORIGINS}
       - AuthorityServer__Authority=${AUTHORITY_URL}
-      - AuthorityServer__ValidateAudience=false
+      - AuthorityServer__ValidateAudience=true
       - AuthorityServer__ValidateIssuer=true
       - AuthorityServer__ValidateIssuerSigningKey=true
       - AppSettings__GraphQLIdentityService=${GRAPHQL_IDENTITY_SERVICE}
@@ -221,7 +221,7 @@ services:
       - ASPNETCORE_URLS=http://+:8080
       - AllowedCorsOrigins=${ALLOWED_CORS_ORIGINS}
       - AuthorityServer__Authority=${AUTHORITY_URL}
-      - AuthorityServer__ValidateAudience=false
+      - AuthorityServer__ValidateAudience=true
       - AuthorityServer__ValidateIssuer=true
       - AuthorityServer__ValidateIssuerSigningKey=true
       - AppSettings__GraphQLIdentityService=${GRAPHQL_IDENTITY_SERVICE}

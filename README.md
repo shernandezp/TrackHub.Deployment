@@ -17,6 +17,7 @@ Docker-based deployment solution for TrackHub application stack.
 
 ## Quick Links
 
+- [Quick Start Guide](QUICKSTART.md) - Simplified guide for beginners
 - [Full Installation Guide](INSTALL.md) - Comprehensive step-by-step instructions
 - [Configuration Reference](INSTALL.md#configuration-reference) - All environment variables
 - [Troubleshooting](INSTALL.md#troubleshooting) - Common issues and solutions

@@ -2,6 +2,8 @@
 
 A comprehensive guide for deploying TrackHub on Linux servers using Docker.
 
+> **First time?** See [QUICKSTART.md](QUICKSTART.md) for a simplified step-by-step guide.
+
 ## Table of Contents
 
 1. [Overview](#overview)
@@ -94,20 +96,38 @@ TrackHub is a GPS tracking and monitoring platform consisting of:
 | CPU | 2 cores | 4+ cores |
 | RAM | 4 GB | 8+ GB |
 | Storage | 20 GB | 50+ GB SSD |
-| OS | Ubuntu 20.04+ / Debian 11+ | Ubuntu 22.04 LTS |
+| OS | Ubuntu 22.04 LTS | Ubuntu 24.04.4 LTS |
+
+> **Note:** Ubuntu 24.04.4 LTS is the default and recommended operating system. Other Debian-based distributions may work but are not officially tested.
 
 ### Software Requirements
 
-- **Docker** 20.10+
-- **Docker Compose** v2.0+
-- **Git** (for cloning repositories)
-- **OpenSSL** (for certificate generation)
+| Software | Minimum Version | Recommended |
+|----------|----------------|-------------|
+| Docker Engine | 24.0+ | Latest stable |
+| Docker Compose | v2.20+ | Latest stable |
+| Git | 2.34+ | Latest stable |
+| OpenSSL | 3.0+ | Latest stable |
+| .NET SDK | 10.0 | 10.0 (build only) |
+
+> **Note:** .NET SDK is only required if building services outside Docker. Docker builds include the SDK automatically.
 
 ### External Requirements
 
-- Registered domain name
-- PostgreSQL database server (external)
+- Registered domain name (or static IP for internal deployments)
+- PostgreSQL 14+ database server (external, already installed and operational)
 - SSL certificate (Let's Encrypt recommended for production)
+
+### Database Server Requirements
+
+The deployment assumes an existing PostgreSQL server. Two databases are required:
+
+| Database | Purpose |
+|----------|---------|
+| `TrackHubSecurity` | Identity, users, roles, policies |
+| `TrackHub` | Assets, transporters, devices, geofences, positions |
+
+The PostgreSQL server must be accessible from the application server(s) over the network.
 
 ---
 
@@ -134,6 +154,7 @@ mkdir -p /opt/trackhub
 cd /opt/trackhub
 
 # Clone all required repositories
+git clone https://github.com/shernandezp/TrackHub.Deployment.git
 git clone https://github.com/shernandezp/TrackHub.git
 git clone https://github.com/shernandezp/TrackHub.AuthorityServer.git
 git clone https://github.com/shernandezp/TrackHubSecurity.git
@@ -141,15 +162,12 @@ git clone https://github.com/shernandezp/TrackHub.Manager.git
 git clone https://github.com/shernandezp/TrackHubRouter.git
 git clone https://github.com/shernandezp/TrackHub.Geofencing.git
 git clone https://github.com/shernandezp/TrackHub.Reporting.git
-
-# Clone or copy the deployment folder
-# (assuming deployment folder is in the repository)
 ```
 
 ### 3. Configure Environment
 
 ```bash
-cd deployment
+cd TrackHub.Deployment
 
 # Copy example configuration
 cp .env.example .env
@@ -634,8 +652,9 @@ nano .env
 
 ### PostgreSQL Requirements
 
-- PostgreSQL 13+
+- PostgreSQL 14+
 - Two databases: `TrackHubSecurity` and `TrackHub`
+- Must be installed and operational before deploying TrackHub
 
 ### Manual Database Creation
 

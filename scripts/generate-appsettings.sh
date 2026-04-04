@@ -155,7 +155,7 @@ generate_security() {
   },
   "AuthorityServer": {
     "Authority": "${AUTHORITY_URL}",
-    "ValidateAudience": false,
+    "ValidateAudience": true,
     "ValidateIssuer": true,
     "ValidateIssuerSigningKey": true
   },
@@ -191,7 +191,7 @@ generate_manager() {
   },
   "AuthorityServer": {
     "Authority": "${AUTHORITY_URL}",
-    "ValidateAudience": false,
+    "ValidateAudience": true,
     "ValidateIssuer": true,
     "ValidateIssuerSigningKey": true
   },
@@ -225,7 +225,7 @@ generate_router() {
   },
   "AuthorityServer": {
     "Authority": "${AUTHORITY_URL}",
-    "ValidateAudience": false,
+    "ValidateAudience": true,
     "ValidateIssuer": true,
     "ValidateIssuerSigningKey": true
   },
@@ -268,7 +268,7 @@ generate_geofencing() {
   },
   "AuthorityServer": {
     "Authority": "${AUTHORITY_URL}",
-    "ValidateAudience": false,
+    "ValidateAudience": true,
     "ValidateIssuer": true,
     "ValidateIssuerSigningKey": true
   },
@@ -300,7 +300,7 @@ generate_reporting() {
   },
   "AuthorityServer": {
     "Authority": "${AUTHORITY_URL}",
-    "ValidateAudience": false,
+    "ValidateAudience": true,
     "ValidateIssuer": true,
     "ValidateIssuerSigningKey": true
   },
