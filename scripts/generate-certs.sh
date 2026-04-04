@@ -2,8 +2,8 @@
 # =============================================================================
 # SSL Certificate Generation Script
 # =============================================================================
-# Generate self-signed certificates for development/testing
-# For production, use Let's Encrypt or a trusted CA
+# Obtains SSL certificates from Let's Encrypt via Certbot
+# Also generates the OpenIddict certificate for the Authority Server
 # =============================================================================
 
 set -e
@@ -13,6 +13,7 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 CERT_DIR="$PROJECT_DIR/certificates"
 
 # Colors
+RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
@@ -26,83 +27,143 @@ print_warning() {
     echo -e "${YELLOW}⚠ $1${NC}"
 }
 
+print_error() {
+    echo -e "${RED}✗ $1${NC}"
+}
+
 print_info() {
     echo -e "${BLUE}ℹ $1${NC}"
 }
 
-# Default values
-DOMAIN=${1:-"localhost"}
-DAYS=${2:-365}
-OPENIDDICT_PASSWORD=${3:-"openiddict"}
+# Load environment
+if [ -f "$PROJECT_DIR/.env" ]; then
+    set -a
+    source "$PROJECT_DIR/.env"
+    set +a
+fi
 
-print_info "Generating certificates for domain: $DOMAIN"
-print_warning "These are self-signed certificates for development/testing only!"
-print_warning "For production, use Let's Encrypt or a trusted Certificate Authority."
+# Parameters
+DOMAIN="${1:-$DOMAIN}"
+EMAIL="${2:-$LETSENCRYPT_EMAIL}"
+OPENIDDICT_PASSWORD="${3:-${CERTIFICATE_PASSWORD:-openiddict}}"
+
+if [ -z "$DOMAIN" ]; then
+    print_error "Domain is required. Usage: $0 <domain> [email] [openiddict_password]"
+    print_info "Or set DOMAIN in your .env file"
+    exit 1
+fi
+
+if [ -z "$EMAIL" ]; then
+    print_error "Email is required for Let's Encrypt. Usage: $0 <domain> <email>"
+    print_info "Or set LETSENCRYPT_EMAIL in your .env file"
+    exit 1
+fi
+
+print_info "Obtaining Let's Encrypt SSL certificate for: $DOMAIN"
 
 mkdir -p "$CERT_DIR"
+
+# =============================================================================
+# Install Certbot if not present
+# =============================================================================
+if ! command -v certbot &> /dev/null; then
+    print_info "Installing certbot..."
+    apt-get update -qq
+    apt-get install -y -qq certbot > /dev/null
+    print_success "Certbot installed"
+fi
+
+# =============================================================================
+# Obtain Let's Encrypt certificate
+# =============================================================================
+print_info "Requesting certificate from Let's Encrypt..."
+
+# Check if nginx is running — use webroot mode; otherwise use standalone
+if docker ps --format '{{.Names}}' 2>/dev/null | grep -q trackhub-nginx; then
+    print_info "Nginx is running, using webroot method..."
+
+    # Create webroot directory if needed
+    WEBROOT="/var/www/certbot"
+    mkdir -p "$WEBROOT"
+
+    certbot certonly \
+        --webroot \
+        -w "$WEBROOT" \
+        -d "$DOMAIN" \
+        --email "$EMAIL" \
+        --agree-tos \
+        --non-interactive \
+        --keep-until-expiring
+else
+    print_info "Nginx is not running, using standalone method..."
+
+    certbot certonly \
+        --standalone \
+        -d "$DOMAIN" \
+        --email "$EMAIL" \
+        --agree-tos \
+        --non-interactive \
+        --keep-until-expiring
+fi
+
+# =============================================================================
+# Copy certificates to project directory
+# =============================================================================
+LETSENCRYPT_DIR="/etc/letsencrypt/live/$DOMAIN"
+
+if [ -d "$LETSENCRYPT_DIR" ]; then
+    cp "$LETSENCRYPT_DIR/fullchain.pem" "$CERT_DIR/"
+    cp "$LETSENCRYPT_DIR/privkey.pem" "$CERT_DIR/"
+    chmod 644 "$CERT_DIR/fullchain.pem"
+    chmod 600 "$CERT_DIR/privkey.pem"
+    print_success "Let's Encrypt certificates copied to $CERT_DIR"
+else
+    print_error "Let's Encrypt certificate directory not found: $LETSENCRYPT_DIR"
+    exit 1
+fi
+
+# =============================================================================
+# Generate OpenIddict certificate (self-signed, used internally)
+# =============================================================================
+print_info "Generating OpenIddict certificate..."
 cd "$CERT_DIR"
 
-# Generate SSL certificates for Nginx
-print_info "Generating SSL certificates for Nginx..."
-
-# Create CA key and certificate
-openssl genrsa -out ca.key 4096
-openssl req -new -x509 -days $DAYS -key ca.key -out ca.crt \
-    -subj "/C=US/ST=State/L=City/O=Organization/CN=TrackHub CA"
-
-# Create server key
-openssl genrsa -out privkey.pem 2048
-
-# Create CSR
-openssl req -new -key privkey.pem -out server.csr \
-    -subj "/C=US/ST=State/L=City/O=Organization/CN=$DOMAIN"
-
-# Create extensions file for SAN
-cat > server.ext << EOF
-authorityKeyIdentifier=keyid,issuer
-basicConstraints=CA:FALSE
-keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
-subjectAltName = @alt_names
-
-[alt_names]
-DNS.1 = $DOMAIN
-DNS.2 = localhost
-DNS.3 = *.localhost
-IP.1 = 127.0.0.1
-EOF
-
-# Sign the certificate
-openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial \
-    -out fullchain.pem -days $DAYS -sha256 -extfile server.ext
-
-print_success "SSL certificates generated: fullchain.pem, privkey.pem"
-
-# Generate OpenIddict certificate
-print_info "Generating OpenIddict certificate..."
-
 openssl req -x509 -newkey rsa:4096 -keyout openiddict.key -out openiddict.crt \
-    -days $DAYS -nodes \
+    -days 7300 -nodes \
     -subj "/C=US/ST=State/L=City/O=Organization/CN=TrackHub OpenIddict"
 
 openssl pkcs12 -export -out certificate.pfx -inkey openiddict.key -in openiddict.crt \
     -passout pass:$OPENIDDICT_PASSWORD
 
+# Cleanup temporary OpenIddict files
+rm -f openiddict.key openiddict.crt
+
 print_success "OpenIddict certificate generated: certificate.pfx"
 
-# Cleanup temporary files
-rm -f server.csr server.ext openiddict.key openiddict.crt ca.srl
+# =============================================================================
+# Setup auto-renewal cron job
+# =============================================================================
+RENEW_SCRIPT="$PROJECT_DIR/scripts/renew-ssl.sh"
+CRON_JOB="0 3 * * * $RENEW_SCRIPT >> /var/log/trackhub-ssl-renewal.log 2>&1"
 
-print_success "Certificate generation complete!"
+if ! crontab -l 2>/dev/null | grep -qF "$RENEW_SCRIPT"; then
+    (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -
+    print_success "Auto-renewal cron job added (runs daily at 3 AM)"
+else
+    print_info "Auto-renewal cron job already exists"
+fi
+
+print_success "Certificate setup complete!"
 echo ""
 print_info "Generated files in $CERT_DIR:"
 ls -la "$CERT_DIR"
 echo ""
-print_info "SSL Certificate files:"
+print_info "SSL Certificate files (Let's Encrypt):"
 echo "  - fullchain.pem (Nginx SSL certificate)"
 echo "  - privkey.pem (Nginx SSL private key)"
-echo "  - ca.crt (CA certificate - for trusting self-signed certs)"
 echo ""
 print_info "OpenIddict Certificate:"
 echo "  - certificate.pfx (password: $OPENIDDICT_PASSWORD)"
 echo ""
+print_info "Certificates will auto-renew via cron. Check logs at /var/log/trackhub-ssl-renewal.log"
 print_warning "Remember to update CERTIFICATE_PASSWORD in .env if you changed the default password"

@@ -80,9 +80,9 @@ nano .env
 cp config/clients.json.example config/clients.json
 nano config/clients.json
 
-# 3. Generate certificates (development only)
+# 3. Generate certificates
 chmod +x scripts/*.sh
-./scripts/generate-certs.sh your-domain.com
+./scripts/generate-certs.sh your-domain.com admin@your-domain.com
 
 # 4. Deploy
 ./scripts/deploy.sh full --build

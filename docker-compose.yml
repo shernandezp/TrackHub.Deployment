@@ -17,6 +17,7 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./certificates:/etc/nginx/ssl:ro
+      - ./certbot/webroot:/var/www/certbot:ro
       - trackhub-frontend:/usr/share/nginx/html:ro
     depends_on:
       - frontend

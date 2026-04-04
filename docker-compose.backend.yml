@@ -13,6 +13,7 @@ services:
     volumes:
       - ./nginx/nginx.backend.conf:/etc/nginx/nginx.conf:ro
       - ./certificates:/etc/nginx/ssl:ro
+      - ./certbot/webroot:/var/www/certbot:ro
     depends_on:
       - authority
       - security

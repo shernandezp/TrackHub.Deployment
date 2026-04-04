@@ -179,13 +179,9 @@ nano .env
 ### 4. Set Up Certificates
 
 ```bash
-# For development/testing - generate self-signed certificates
-./scripts/generate-certs.sh your-domain.com
-
-# For production - copy your Let's Encrypt or CA certificates
-# cp /path/to/fullchain.pem certificates/
-# cp /path/to/privkey.pem certificates/
-# cp /path/to/certificate.pfx certificates/
+# Obtain Let's Encrypt SSL certificate + generate OpenIddict certificate
+# Requires DOMAIN and LETSENCRYPT_EMAIL in .env (or pass as arguments)
+sudo ./scripts/generate-certs.sh your-domain.com admin@your-domain.com
 ```
 
 ### 5. Configure OAuth Clients
@@ -327,30 +323,45 @@ REACT_APP_AUTHORIZATION_ENDPOINT=https://trackhub.example.com/Identity/authorize
 ### Step 6: SSL and OpenIddict Certificates
 
 You need **two types of certificates**:
-1. **SSL/TLS Certificate** - For HTTPS (Nginx)
+1. **SSL/TLS Certificate** - For HTTPS (Nginx) — obtained from Let's Encrypt
 2. **OpenIddict Certificate** - For token signing (Authority Server and all APIs)
 
-#### SSL Certificate (for HTTPS)
+#### SSL Certificate (Let's Encrypt)
 
-**Option A: Let's Encrypt (Production)**
+The `generate-certs.sh` script handles both certificates. Add these to your `.env`:
+
+```env
+DOMAIN=trackhub.example.com
+LETSENCRYPT_EMAIL=admin@trackhub.example.com
+```
+
+Then run:
+
+```bash
+sudo ./scripts/generate-certs.sh
+```
+
+This will:
+- Install `certbot` if not present
+- Obtain a free Let's Encrypt certificate (valid 90 days, auto-renewed)
+- Generate the OpenIddict `.pfx` certificate for token signing
+- Set up a daily cron job that checks for renewal
+
+If nginx is already running, it uses the **webroot** method (zero downtime). Otherwise, it uses **standalone** mode.
+
+**Manual alternative (if not using the script):**
 
 ```bash
 # Install certbot
 sudo apt install -y certbot
 
-# Generate certificate
-sudo certbot certonly --standalone -d trackhub.example.com
+# Obtain certificate
+sudo certbot certonly --standalone -d trackhub.example.com --email admin@trackhub.example.com --agree-tos
 
 # Copy certificates
 sudo cp /etc/letsencrypt/live/trackhub.example.com/fullchain.pem certificates/
 sudo cp /etc/letsencrypt/live/trackhub.example.com/privkey.pem certificates/
 sudo chown $USER:$USER certificates/*.pem
-```
-
-**Option B: Self-Signed (Development)**
-
-```bash
-./scripts/generate-certs.sh trackhub.example.com 365 openiddict
 ```
 
 #### OpenIddict Certificate (for Token Signing)
@@ -575,6 +586,7 @@ Regenerate appsettings when you change:
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `DOMAIN` | Your domain name | `trackhub.example.com` |
+| `LETSENCRYPT_EMAIL` | Email for Let's Encrypt | `admin@trackhub.example.com` |
 | `ALLOWED_CORS_ORIGINS` | CORS allowed origins | `https://trackhub.example.com` |
 | `DB_CONNECTION_SECURITY` | Security DB connection | `server=...;database=TrackHubSecurity;...` |
 | `DB_CONNECTION_MANAGER` | Manager DB connection | `server=...;database=TrackHub;...` |
@@ -772,23 +784,32 @@ Then remove the dependency from the authority service.
 
 ### Production (Let's Encrypt)
 
-For HTTPS/TLS certificates used by Nginx:
+The recommended way is to use the provided script:
 
 ```bash
-# Install certbot
-sudo apt install certbot
+# Set in .env
+# DOMAIN=your-domain.com
+# LETSENCRYPT_EMAIL=admin@your-domain.com
 
-# Generate certificate
-sudo certbot certonly --standalone -d your-domain.com
+# Run the script (handles everything)
+sudo ./scripts/generate-certs.sh
+```
 
-# Copy to deployment folder
-sudo cp /etc/letsencrypt/live/your-domain.com/fullchain.pem certificates/
-sudo cp /etc/letsencrypt/live/your-domain.com/privkey.pem certificates/
-sudo chown $USER:$USER certificates/*.pem
+The script will:
+1. Install `certbot` if needed
+2. Obtain a free SSL certificate from Let's Encrypt
+3. Copy `fullchain.pem` and `privkey.pem` to `certificates/`
+4. Generate the OpenIddict `certificate.pfx` for token signing
+5. Add a daily cron job for automatic renewal
 
-# Set up auto-renewal
-sudo crontab -e
-# Add: 0 0 1 * * certbot renew --quiet && docker restart trackhub-nginx
+Certificates are valid for 90 days and renew automatically. The renewal script uses the **webroot** method so nginx stays online during renewal.
+
+```bash
+# Manual renewal check
+./scripts/renew-ssl.sh
+
+# Verify renewal cron is set up
+crontab -l | grep renew-ssl
 ```
 
 ### OpenIddict Certificate (Token Signing)
@@ -977,12 +998,14 @@ curl -k https://your-domain.com/health/security
 
 ### SSL Certificate Renewal
 
+Let's Encrypt certificates auto-renew via a daily cron job set up by `generate-certs.sh`. The renewal uses the webroot method (no downtime).
+
 ```bash
-# Manual renewal
+# Check renewal status
 ./scripts/renew-ssl.sh
 
-# Set up automatic renewal (cron)
-sudo ./scripts/renew-ssl.sh --install-cron
+# Verify auto-renewal cron
+crontab -l | grep renew-ssl
 ```
 
 ### Service Management

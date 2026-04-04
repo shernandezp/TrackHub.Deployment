@@ -2,9 +2,10 @@
 # =============================================================================
 # TrackHub SSL Certificate Renewal Script
 # =============================================================================
-# Automatically renews Let's Encrypt certificates and reloads nginx
+# Automatically renews Let's Encrypt certificates using webroot method
+# (no nginx downtime required).
 # Add to crontab for automatic renewal:
-#   0 0 1 * * /opt/trackhub/TrackHub.Deployment/scripts/renew-ssl.sh >> /var/log/trackhub-ssl-renewal.log 2>&1
+#   0 3 * * * /opt/trackhub/TrackHub.Deployment/scripts/renew-ssl.sh >> /var/log/trackhub-ssl-renewal.log 2>&1
 # =============================================================================
 
 set -e
@@ -12,6 +13,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 CERT_DIR="$PROJECT_DIR/certificates"
+WEBROOT="$PROJECT_DIR/certbot/webroot"
 
 # Colors (disabled if not interactive)
 if [ -t 1 ]; then
@@ -55,7 +57,7 @@ log "Starting SSL certificate renewal check for $DOMAIN"
 
 # Check if certbot is installed
 if ! command -v certbot &> /dev/null; then
-    print_error "certbot is not installed"
+    print_error "certbot is not installed. Run: apt install certbot"
     exit 1
 fi
 
@@ -84,15 +86,14 @@ log "Certificate expires in $DAYS_UNTIL_EXPIRY days"
 # Renew if less than 30 days until expiry
 if [ "$DAYS_UNTIL_EXPIRY" -lt 30 ]; then
     log "Certificate needs renewal (less than 30 days until expiry)"
-    
-    # Stop nginx temporarily for standalone renewal
-    print_info "Stopping nginx for certificate renewal..."
-    docker stop trackhub-nginx 2>/dev/null || true
-    
-    # Attempt renewal
-    if certbot renew --standalone --non-interactive; then
+
+    # Ensure webroot directory exists
+    mkdir -p "$WEBROOT"
+
+    # Attempt renewal using webroot (no nginx downtime)
+    if certbot renew --webroot -w "$WEBROOT" --non-interactive; then
         log "Certificate renewed successfully"
-        
+
         # Copy new certificates
         if [ -d "/etc/letsencrypt/live/$DOMAIN" ]; then
             cp "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" "$CERT_DIR/"
@@ -101,14 +102,15 @@ if [ "$DAYS_UNTIL_EXPIRY" -lt 30 ]; then
             chmod 600 "$CERT_DIR/privkey.pem"
             print_success "Certificates copied to $CERT_DIR"
         fi
+
+        # Reload nginx to pick up new certificates (no downtime)
+        print_info "Reloading nginx..."
+        docker exec trackhub-nginx nginx -s reload 2>/dev/null || \
+            docker restart trackhub-nginx 2>/dev/null || true
+        print_success "Nginx reloaded with new certificates"
     else
         print_error "Certificate renewal failed"
     fi
-    
-    # Restart nginx
-    print_info "Starting nginx..."
-    docker start trackhub-nginx
-    
 else
     log "Certificate is still valid, no renewal needed"
 fi

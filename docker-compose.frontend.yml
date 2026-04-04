@@ -13,6 +13,7 @@ services:
     volumes:
       - ./nginx/nginx.frontend.conf:/etc/nginx/nginx.conf:ro
       - ./certificates:/etc/nginx/ssl:ro
+      - ./certbot/webroot:/var/www/certbot:ro
       - trackhub-frontend:/usr/share/nginx/html:ro
     depends_on:
       - frontend

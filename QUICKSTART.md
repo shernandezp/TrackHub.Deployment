@@ -94,20 +94,24 @@ Replace `DB_HOST` with your PostgreSQL server address (`localhost` if on the sam
 
 ```bash
 chmod +x scripts/*.sh
-
-# Generate SSL + OpenIddict certificates
-./scripts/generate-certs.sh your-domain.com 365 YourCertificatePassword
 ```
 
-For production, use Let's Encrypt instead:
+**Add `LETSENCRYPT_EMAIL` to your `.env` file:**
+
+```env
+LETSENCRYPT_EMAIL=admin@your-domain.com
+```
+
+**Obtain Let's Encrypt SSL + generate OpenIddict certificate:**
 
 ```bash
-sudo apt install certbot
-sudo certbot certonly --standalone -d your-domain.com
-sudo cp /etc/letsencrypt/live/your-domain.com/fullchain.pem certificates/
-sudo cp /etc/letsencrypt/live/your-domain.com/privkey.pem certificates/
-sudo chown $USER:$USER certificates/*.pem
+sudo ./scripts/generate-certs.sh your-domain.com admin@your-domain.com YourCertificatePassword
 ```
+
+This will:
+- Obtain a free SSL certificate from Let's Encrypt (auto-renews every 90 days)
+- Generate the OpenIddict token-signing certificate (`certificate.pfx`)
+- Set up a daily cron job for automatic renewal
 
 ---
 
