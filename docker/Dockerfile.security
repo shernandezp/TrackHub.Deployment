@@ -6,20 +6,24 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Copy solution and project files
-COPY TrackHub.Security.sln .
-COPY Directory.Build.props .
-COPY Directory.Packages.props .
-COPY global.json .
-COPY src/Application/Application.csproj src/Application/
-COPY src/Domain/Domain.csproj src/Domain/
-COPY src/Infrastructure/Infrastructure.csproj src/Infrastructure/
-COPY src/Web/Web.csproj src/Web/
+COPY TrackHubSecurity/TrackHub.Security.sln .
+COPY TrackHubSecurity/Directory.Build.props .
+COPY TrackHubSecurity/Directory.Packages.props .
+COPY TrackHubSecurity/global.json .
+COPY TrackHubSecurity/src/Application/Application.csproj src/Application/
+COPY TrackHubSecurity/src/Domain/Domain.csproj src/Domain/
+COPY TrackHubSecurity/src/Infrastructure/SecurityDB/SecurityDB.csproj src/Infrastructure/SecurityDB/
+COPY TrackHubSecurity/src/Infrastructure/ManagerApi/ManagerApi.csproj src/Infrastructure/ManagerApi/
+COPY TrackHubSecurity/src/Web/Web.csproj src/Web/
+
+# Copy local NuGet packages
+COPY TrackHub.Deployment/nuget-packages/ /nuget-packages/
 
 # Restore dependencies
-RUN dotnet restore src/Web/Web.csproj
+RUN dotnet restore src/Web/Web.csproj --configfile /nuget-packages/nuget.config
 
 # Copy all source code
-COPY src/ src/
+COPY TrackHubSecurity/src/ src/
 
 # Build and publish
 RUN dotnet publish src/Web/Web.csproj -c Release -o /app/publish --no-restore

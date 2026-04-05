@@ -40,8 +40,8 @@ services:
   # =============================================================================
   frontend:
     build:
-      context: ../TrackHub
-      dockerfile: ../TrackHub.Deployment/docker/Dockerfile.frontend
+      context: ..
+      dockerfile: TrackHub.Deployment/docker/Dockerfile.frontend
       args:
         - REACT_APP_DEFAULT_LAT=${REACT_APP_DEFAULT_LAT:-4.624335}
         - REACT_APP_DEFAULT_LNG=${REACT_APP_DEFAULT_LNG:--74.063644}
@@ -67,8 +67,8 @@ services:
   # =============================================================================
   authority:
     build:
-      context: ../TrackHub.AuthorityServer
-      dockerfile: ../TrackHub.Deployment/docker/Dockerfile.authority
+      context: ..
+      dockerfile: TrackHub.Deployment/docker/Dockerfile.authority
     container_name: trackhub-authority
     restart: unless-stopped
     environment:
@@ -105,8 +105,8 @@ services:
   # =============================================================================
   security:
     build:
-      context: ../TrackHubSecurity
-      dockerfile: ../TrackHub.Deployment/docker/Dockerfile.security
+      context: ..
+      dockerfile: TrackHub.Deployment/docker/Dockerfile.security
     container_name: trackhub-security
     restart: unless-stopped
     environment:
@@ -148,8 +148,8 @@ services:
   # =============================================================================
   manager:
     build:
-      context: ../TrackHub.Manager
-      dockerfile: ../TrackHub.Deployment/docker/Dockerfile.manager
+      context: ..
+      dockerfile: TrackHub.Deployment/docker/Dockerfile.manager
     container_name: trackhub-manager
     restart: unless-stopped
     environment:
@@ -192,8 +192,8 @@ services:
   # =============================================================================
   router:
     build:
-      context: ../TrackHubRouter
-      dockerfile: ../TrackHub.Deployment/docker/Dockerfile.router
+      context: ..
+      dockerfile: TrackHub.Deployment/docker/Dockerfile.router
     container_name: trackhub-router
     restart: unless-stopped
     environment:
@@ -239,8 +239,8 @@ services:
   # =============================================================================
   geofencing:
     build:
-      context: ../TrackHub.Geofencing
-      dockerfile: ../TrackHub.Deployment/docker/Dockerfile.geofencing
+      context: ..
+      dockerfile: TrackHub.Deployment/docker/Dockerfile.geofencing
     container_name: trackhub-geofencing
     restart: unless-stopped
     environment:
@@ -281,8 +281,8 @@ services:
   # =============================================================================
   reporting:
     build:
-      context: ../TrackHub.Reporting
-      dockerfile: ../TrackHub.Deployment/docker/Dockerfile.reporting
+      context: ..
+      dockerfile: TrackHub.Deployment/docker/Dockerfile.reporting
     container_name: trackhub-reporting
     restart: unless-stopped
     environment:
@@ -325,8 +325,8 @@ services:
   # =============================================================================
   db-init:
     build:
-      context: .
-      dockerfile: docker/Dockerfile.db-init
+      context: ..
+      dockerfile: TrackHub.Deployment/docker/Dockerfile.db-init
     container_name: trackhub-db-init
     environment:
       - DB_CONNECTION_SECURITY=${DB_CONNECTION_SECURITY}
@@ -342,8 +342,8 @@ services:
   # =============================================================================
   syncworker:
     build:
-      context: ../TrackHubRouter
-      dockerfile: ../TrackHub.Deployment/docker/Dockerfile.syncworker
+      context: ..
+      dockerfile: TrackHub.Deployment/docker/Dockerfile.syncworker
     container_name: trackhub-syncworker
     restart: unless-stopped
     environment:

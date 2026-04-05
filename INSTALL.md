@@ -12,13 +12,14 @@ A comprehensive guide for deploying TrackHub on Linux servers using Docker.
 4. [Quick Start](#quick-start)
 5. [Detailed Installation](#detailed-installation)
 6. [Configuration Reference](#configuration-reference)
-7. [Deployment Scenarios](#deployment-scenarios)
-8. [Database Setup](#database-setup)
-9. [Migrating to a New Server](#migrating-to-a-new-server-existing-database)
-10. [SSL Certificates](#ssl-certificates)
-11. [Updating Services](#updating-services)
-12. [Monitoring & Maintenance](#monitoring--maintenance)
-13. [Troubleshooting](#troubleshooting)
+7. [Build Architecture](#build-architecture)
+8. [Deployment Scenarios](#deployment-scenarios)
+9. [Database Setup](#database-setup)
+10. [Migrating to a New Server](#migrating-to-a-new-server-existing-database)
+11. [SSL Certificates](#ssl-certificates)
+12. [Updating Services](#updating-services)
+13. [Monitoring & Maintenance](#monitoring--maintenance)
+14. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -622,6 +623,28 @@ Regenerate appsettings when you change:
 
 ---
 
+## Build Architecture
+
+### Docker Build Context
+
+All services use the parent directory (`/opt/trackhub/`) as the Docker build context. This allows each Dockerfile to access:
+
+1. **Its own source repository** (e.g., `TrackHub.Manager/`)
+2. **Local NuGet packages** (`TrackHub.Deployment/nuget-packages/`)
+3. **Shared scripts** (`TrackHub.Deployment/scripts/`)
+
+### Local NuGet Packages
+
+TrackHub services depend on the **TrackHubCommon** shared library, distributed as local NuGet packages (not published to nuget.org). These packages are stored in `nuget-packages/` and mounted into Docker builds via a `nuget.config` that configures both the local source and nuget.org.
+
+If you update TrackHubCommon, rebuild the packages and copy the new `.nupkg` files to `nuget-packages/` before rebuilding services.
+
+### Reverse Proxy and HTTPS
+
+Nginx terminates SSL and forwards HTTP requests to backend containers. Each ASP.NET service uses `ForwardedHeaders` middleware to trust `X-Forwarded-Proto` and `X-Forwarded-For` headers from nginx, ensuring the application correctly identifies requests as HTTPS even though internal traffic is HTTP.
+
+---
+
 ## Deployment Scenarios
 
 ### Scenario 1: Single Server (Full Stack)
@@ -1075,6 +1098,22 @@ openssl x509 -in certificates/fullchain.pem -text -noout
 1. Check `ALLOWED_CORS_ORIGINS` in `.env`
 2. Ensure frontend URL matches exactly (including protocol)
 3. Check nginx configuration
+
+#### OpenIddict HTTPS error (ID2083)
+
+If you see `error:invalid_request` with `This server only accepts HTTPS requests`:
+
+1. The Authority Server needs `ForwardedHeaders` middleware to trust nginx's `X-Forwarded-Proto` header
+2. Ensure `UseForwardedHeaders` is called **before** `UseHttpsRedirection` in `Program.cs`
+3. This is required because nginx terminates SSL and forwards HTTP internally
+
+#### NuGet package restore failures in Docker
+
+If `dotnet restore` fails with missing TrackHubCommon packages:
+
+1. Ensure `nuget-packages/` directory contains all `.nupkg` files
+2. Verify `nuget-packages/nuget.config` exists with local source configured
+3. All Dockerfiles should use `--configfile /nuget-packages/nuget.config` on restore
 
 #### 502 Bad Gateway
 

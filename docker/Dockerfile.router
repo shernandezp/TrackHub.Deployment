@@ -6,20 +6,34 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Copy solution and project files
-COPY TrackHub.Router.sln .
-COPY Directory.Build.props .
-COPY Directory.Packages.props .
-COPY global.json .
-COPY src/Application/Application.csproj src/Application/
-COPY src/Domain/Domain.csproj src/Domain/
-COPY src/Infrastructure/Infrastructure.csproj src/Infrastructure/
-COPY src/Web/Web.csproj src/Web/
+COPY TrackHubRouter/TrackHub.Router.sln .
+COPY TrackHubRouter/Directory.Build.props .
+COPY TrackHubRouter/Directory.Packages.props .
+COPY TrackHubRouter/global.json .
+COPY TrackHubRouter/src/Application/Application.csproj src/Application/
+COPY TrackHubRouter/src/Domain/Domain.csproj src/Domain/
+COPY TrackHubRouter/src/Infrastructure/Common/Common.csproj src/Infrastructure/Common/
+COPY TrackHubRouter/src/Infrastructure/CommandTrack/CommandTrack.csproj src/Infrastructure/CommandTrack/
+COPY TrackHubRouter/src/Infrastructure/Flespi/Flespi.csproj src/Infrastructure/Flespi/
+COPY TrackHubRouter/src/Infrastructure/GeofenceApi/GeofenceApi.csproj src/Infrastructure/GeofenceApi/
+COPY TrackHubRouter/src/Infrastructure/Geotab/Geotab.csproj src/Infrastructure/Geotab/
+COPY TrackHubRouter/src/Infrastructure/GpsGate/GpsGate.csproj src/Infrastructure/GpsGate/
+COPY TrackHubRouter/src/Infrastructure/ManagerApi/ManagerApi.csproj src/Infrastructure/ManagerApi/
+COPY TrackHubRouter/src/Infrastructure/Navixy/Navixy.csproj src/Infrastructure/Navixy/
+COPY TrackHubRouter/src/Infrastructure/Protack/Protrack.csproj src/Infrastructure/Protack/
+COPY TrackHubRouter/src/Infrastructure/Samsara/Samsara.csproj src/Infrastructure/Samsara/
+COPY TrackHubRouter/src/Infrastructure/Traccar/Traccar.csproj src/Infrastructure/Traccar/
+COPY TrackHubRouter/src/Infrastructure/Wialon/Wialon.csproj src/Infrastructure/Wialon/
+COPY TrackHubRouter/src/Web/Web.csproj src/Web/
+
+# Copy local NuGet packages
+COPY TrackHub.Deployment/nuget-packages/ /nuget-packages/
 
 # Restore dependencies
-RUN dotnet restore src/Web/Web.csproj
+RUN dotnet restore src/Web/Web.csproj --configfile /nuget-packages/nuget.config
 
 # Copy all source code
-COPY src/ src/
+COPY TrackHubRouter/src/ src/
 
 # Build and publish
 RUN dotnet publish src/Web/Web.csproj -c Release -o /app/publish --no-restore
@@ -46,7 +60,7 @@ EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
+    CMD curl -sf -o /dev/null http://localhost:8080/scalar/v1 || exit 1
 
 # Entry point
 ENTRYPOINT ["dotnet", "TrackHubRouter.Web.dll"]

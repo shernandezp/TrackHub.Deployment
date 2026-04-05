@@ -5,30 +5,36 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Copy AuthorityServer ClientSeeder
-COPY ../TrackHub.AuthorityServer/AuthorityServer.sln ./authority/
-COPY ../TrackHub.AuthorityServer/Directory.Build.props ./authority/
-COPY ../TrackHub.AuthorityServer/Directory.Packages.props ./authority/
-COPY ../TrackHub.AuthorityServer/global.json ./authority/
-COPY ../TrackHub.AuthorityServer/src/ ./authority/src/
+COPY TrackHub.AuthorityServer/AuthorityServer.sln ./authority/
+COPY TrackHub.AuthorityServer/Directory.Build.props ./authority/
+COPY TrackHub.AuthorityServer/Directory.Packages.props ./authority/
+COPY TrackHub.AuthorityServer/global.json ./authority/
+COPY TrackHub.AuthorityServer/src/ ./authority/src/
 
 # Copy TrackHubSecurity DBInitializer
-COPY ../TrackHubSecurity/TrackHub.Security.sln ./security/
-COPY ../TrackHubSecurity/Directory.Build.props ./security/
-COPY ../TrackHubSecurity/Directory.Packages.props ./security/
-COPY ../TrackHubSecurity/global.json ./security/
-COPY ../TrackHubSecurity/src/ ./security/src/
+COPY TrackHubSecurity/TrackHub.Security.sln ./security/
+COPY TrackHubSecurity/Directory.Build.props ./security/
+COPY TrackHubSecurity/Directory.Packages.props ./security/
+COPY TrackHubSecurity/global.json ./security/
+COPY TrackHubSecurity/src/ ./security/src/
 
 # Copy TrackHub.Manager DBInitializer
-COPY ../TrackHub.Manager/TrackHub.Manager.sln ./manager/
-COPY ../TrackHub.Manager/Directory.Build.props ./manager/
-COPY ../TrackHub.Manager/Directory.Packages.props ./manager/
-COPY ../TrackHub.Manager/global.json ./manager/
-COPY ../TrackHub.Manager/src/ ./manager/src/
+COPY TrackHub.Manager/TrackHub.Manager.sln ./manager/
+COPY TrackHub.Manager/Directory.Build.props ./manager/
+COPY TrackHub.Manager/Directory.Packages.props ./manager/
+COPY TrackHub.Manager/global.json ./manager/
+COPY TrackHub.Manager/src/ ./manager/src/
+
+# Copy local NuGet packages
+COPY TrackHub.Deployment/nuget-packages/ /nuget-packages/
 
 # Build all initializers
-RUN dotnet publish ./authority/src/ClientSeeder/ClientSeeder.csproj -c Release -o /app/client-seeder
-RUN dotnet publish ./security/src/DBInitializer/DBInitializer.csproj -c Release -o /app/security-init
-RUN dotnet publish ./manager/src/DBInitializer/DBInitializer.csproj -c Release -o /app/manager-init
+RUN dotnet restore ./authority/src/ClientSeeder/ClientSeeder.csproj --configfile /nuget-packages/nuget.config && \
+    dotnet publish ./authority/src/ClientSeeder/ClientSeeder.csproj -c Release -o /app/client-seeder --no-restore
+RUN dotnet restore ./security/src/DBInitializer/DBInitializer.csproj --configfile /nuget-packages/nuget.config && \
+    dotnet publish ./security/src/DBInitializer/DBInitializer.csproj -c Release -o /app/security-init --no-restore
+RUN dotnet restore ./manager/src/DBInitializer/DBInitializer.csproj --configfile /nuget-packages/nuget.config && \
+    dotnet publish ./manager/src/DBInitializer/DBInitializer.csproj -c Release -o /app/manager-init --no-restore
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
@@ -42,8 +48,8 @@ COPY --from=build /app/security-init ./security-init/
 COPY --from=build /app/manager-init ./manager-init/
 
 # Copy initialization scripts
-COPY scripts/init-databases.sh ./init-databases.sh
-COPY scripts/sync-user-account-ids.sh ./sync-user-account-ids.sh
+COPY TrackHub.Deployment/scripts/init-databases.sh ./init-databases.sh
+COPY TrackHub.Deployment/scripts/sync-user-account-ids.sh ./sync-user-account-ids.sh
 RUN chmod +x ./init-databases.sh ./sync-user-account-ids.sh
 
 # Create flags directory for tracking initialization state

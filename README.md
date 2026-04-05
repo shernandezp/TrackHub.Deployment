@@ -33,6 +33,7 @@ TrackHub.Deployment/
 ├── .env.frontend.example        # Environment template (frontend)
 ├── .env.backend.example         # Environment template (backend)
 ├── INSTALL.md                   # Detailed installation guide
+├── QUICKSTART.md                # Simplified guide for beginners
 ├── README.md                    # This file
 ├── database-structural.sql      # Structural domain migration script
 ├── certificates/                # SSL and OpenIddict certificates
@@ -53,6 +54,9 @@ TrackHub.Deployment/
 │   ├── nginx.conf               # Full stack nginx config
 │   ├── nginx.frontend.conf      # Frontend-only nginx config
 │   └── nginx.backend.conf       # Backend-only nginx config
+├── nuget-packages/              # Local NuGet packages (TrackHubCommon)
+│   ├── nuget.config             # NuGet source configuration
+│   └── *.nupkg                  # Shared library packages
 └── scripts/
     ├── deploy.sh                # Main deployment script
     ├── update-service.sh        # Update individual services
@@ -180,9 +184,9 @@ All services share similar `appsettings.json` configurations. Use the centralize
 
 ## Requirements
 
-- Docker 20.10+
-- Docker Compose v2.0+
-- PostgreSQL 13+ (external)
+- Docker 24.0+
+- Docker Compose v2.20+
+- PostgreSQL 14+ (external, with PostGIS)
 - SSL Certificate
 - Domain name
 
