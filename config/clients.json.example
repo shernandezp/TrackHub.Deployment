@@ -2,15 +2,15 @@
   "scopes": [
     {
       "name": "web_scope",
-      "resource": "web_resource"
+      "resource": "trackhub_api"
     },
     {
       "name": "mobile_scope",
-      "resource": "mobile_resource"
+      "resource": "trackhub_api"
     },
     {
       "name": "sec_scope",
-      "resource": "sec_resource"
+      "resource": "trackhub_api"
     }
   ],
   "PKCEClients": [
