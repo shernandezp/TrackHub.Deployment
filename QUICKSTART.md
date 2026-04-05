@@ -174,8 +174,18 @@ cd /opt/trackhub/TrackHub.Deployment
 ### Update a Single Service
 
 ```bash
+cd /opt/trackhub
+
+# Pull latest code for the service (use the matching repo name)
+# authority → TrackHub.AuthorityServer | security → TrackHubSecurity
+# manager → TrackHub.Manager | router → TrackHubRouter
+# geofencing → TrackHub.Geofencing | reporting → TrackHub.Reporting
+# frontend → TrackHub | deployment → TrackHub.Deployment
+cd TrackHub.Manager && git pull
 cd /opt/trackhub/TrackHub.Deployment
-./scripts/update-service.sh manager    # or: authority, security, router, geofencing, reporting, frontend
+
+# Rebuild and restart the service
+./scripts/update-service.sh manager
 ```
 
 ---
